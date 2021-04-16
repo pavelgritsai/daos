@@ -325,9 +325,8 @@ func (p *Provider) createScanResponse() *storage.ScmScanResponse {
 
 // Scan attempts to scan the system for SCM storage components.
 func (p *Provider) Scan(req storage.ScmScanRequest) (*storage.ScmScanResponse, error) {
-	if p.isInitialized() && !req.Rescan {
-		return p.createScanResponse(), nil
-	}
+	// Don't perform a SCM scan.
+	return p.createScanResponse(), nil
 
 	modules, err := p.backend.Discover()
 	if err != nil {

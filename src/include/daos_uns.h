@@ -58,7 +58,7 @@ struct duns_attr_t {
 	 *
 	 * DUNS_NO_PREFIX
 	 * DUNS_NO_REVERSE_LOOKUP
-	 * DUNS_NO_CHECK_PATH:
+	 * DUNS_NO_CHECK_PATH
 	 */
 	uint32_t		da_flags;
 	/** OUT: Pool UUID or label string.
@@ -93,6 +93,8 @@ struct duns_attr_t {
 	 * on \a da_flags.
 	 */
 	char			*da_rel_path;
+	/** IN: (Optional) For a POSIX container, set hints for file and dir object classes. */
+	daos_size_t		da_hints;
 	/** OUT: This is set to true if path is on Lustre filesystem */
 	bool			da_on_lustre;
 	/** IN: (Deprecated - use flags) String does not include daos:// prefix

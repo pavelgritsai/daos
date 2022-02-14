@@ -8,10 +8,13 @@
 # post provisioning issue.
 # *** Keep these in as much alphbetical order as possible ***
 
+# This script use used by docker but can be invoked from elsewhere, in order to run it
+# interactively then these two commands can be used to set dnf into automatic mode.
+# dnf --assumeyes install dnf-plugins-core
+# dnf config-manager --save --setopt=assumeyes=True
 set -e
 
-dnf upgrade
-dnf install \
+dnf -y --nodocs install \
     boost-python3-devel \
     clang \
     clang-tools-extra \
@@ -66,6 +69,16 @@ dnf install \
     python3-scons \
     python3-yaml \
     sg3_utils \
+    sudo \
     valgrind-devel \
     yasm
-dnf clean all
+
+# For fedora, java-11 is installed along with maven if we install maven from
+# repo. But we need java-8 (1.8). The 'devel' package also needs to be
+# installed specifically.
+
+if [ -e /etc/fedora-release ]; then
+        dnf -y install java-1.8.0-openjdk-devel maven-openjdk8
+else
+        dnf -y install maven
+fi

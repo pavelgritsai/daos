@@ -125,6 +125,9 @@ pipeline {
         booleanParam(name: 'CI_UNIT_TEST_MEMCHECK',
                      defaultValue: true,
                      description: 'Run the Unit Memcheck CI tests')
+        booleanParam(name: 'CI_FI_el8_TEST',
+                     defaultValue: true,
+                     description: 'Run the Fault Injection on EL 8 CI tests')
         booleanParam(name: 'CI_FUNCTIONAL_el7_TEST',
                      defaultValue: true,
                      description: 'Run the functional CentOS 7 CI tests')
@@ -166,7 +169,7 @@ pipeline {
                description: 'Label to use for 9 VM functional tests')
         string(name: 'CI_NLT_1_LABEL',
                defaultValue: 'ci_nlt_1',
-               description: "Label to use for NLT tests")
+               description: 'Label to use for NLT tests')
         string(name: 'CI_NVME_3_LABEL',
                defaultValue: 'ci_nvme3',
                description: 'Label to use for 3 node NVMe tests')
@@ -179,6 +182,13 @@ pipeline {
         string(name: 'CI_STORAGE_PREP_LABEL',
                defaultValue: '',
                description: 'Label for cluster to do a DAOS Storage Preparation')
+        string(name: 'CI_PROVISIONING_POOL',
+               defaultValue: '',
+               description: 'The pool of images to provision test nodes from')
+        string(name: 'CI_PR_REPOS',
+               defaultValue: '',
+               description: 'Repos to add to the build and test ndoes')
+        // TODO: add parameter support for per-distro CI_PR_REPOS
     }
 
     stages {
@@ -565,7 +575,7 @@ pipeline {
                                  inst_rpms: unitPackages()
                     }
                     post {
-                      always {
+                        always {
                             unitTestPost artifacts: ['unit_test_logs/*']
                         }
                     }
@@ -585,7 +595,7 @@ pipeline {
                                  inst_rpms: unitPackages()
                     }
                     post {
-                      always {
+                        always {
                             unitTestPost artifacts: ['nlt_logs/*'],
                                          testResults: 'nlt-junit.xml',
                                          always_script: 'ci/unit/test_nlt_post.sh',
@@ -801,7 +811,7 @@ pipeline {
                     steps {
                         testRpm inst_repos: daosRepos(),
                                 daos_pkg_version: daosPackagesVersion(next_version)
-                   }
+                    }
                 } // stage('Test CentOS 7 RPMs')
                 stage('Test CentOS 8.3.2011 RPMs') {
                     when {
@@ -987,7 +997,7 @@ pipeline {
                                        inst_rpms: functionalPackages(1, next_version,
                                                                      "{client,server}-tests-openmpi"),
                                        test_function: 'runTestFunctionalV2'
-                   }
+                    }
                     post {
                         always {
                             functionalTestPostV2()

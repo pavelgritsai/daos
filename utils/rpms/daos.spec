@@ -441,6 +441,7 @@ getent passwd daos_agent >/dev/null || useradd -s /sbin/nologin -r -g daos_agent
 %{_libdir}/daos_srv/libbio.so
 %{_libdir}/daos_srv/libplacement.so
 %{_libdir}/libdaos_common_pmem.so
+%{_libdir}/daos_srv/libpmfs.so
 %{conf_dir}/vos_size_input.yaml
 %{_bindir}/daos_storage_estimator.py
 %{python3_sitearch}/storage_estimator/*.py
@@ -529,6 +530,8 @@ getent passwd daos_agent >/dev/null || useradd -s /sbin/nologin -r -g daos_agent
 %{_bindir}/srv_checksum_tests
 %{_bindir}/vea_ut
 %{_bindir}/vos_tests
+%{_bindir}/pmfs_unittest
+%{_bindir}/pmfs_demo
 %{_bindir}/vea_stress
 %{_bindir}/obj_ctl
 %{_bindir}/vos_perf

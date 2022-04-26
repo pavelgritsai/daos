@@ -1008,9 +1008,11 @@ typedef struct {
 	daos_key_desc_t			*kds;
 	/** dkeys */
 	d_sg_list_t			*sgl_keys;
-	/** returned records  */
+	/** records  */
 	d_sg_list_t			*sgl_recx;
-	/** returned aggregations */
+	/** records' size */
+	daos_size_t			*recx_size;
+	/** aggregations */
 	d_sg_list_t			*sgl_agg;
 	/** returned pipeline stats  */
 	daos_pipeline_stats_t		*stats;

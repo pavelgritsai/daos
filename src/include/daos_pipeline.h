@@ -261,15 +261,20 @@ daos_pipeline_free(daos_pipeline_t *pipeline);
  *
  * \param[in]		flags		Conditional operations.
  *
- * \param[in]		dkey		Optional dkey. When passed, no iteration is done and
+ * \param[in]		dkey		Optional dkey. When passed, no key iteration is done and
  *					processing is only performed on this specific dkey.
  *
- * \param[in,out]	nr_iods		[in]: Number of I/O descriptors in the iods table.
- *					[out]: Number of returned I/O descriptors in the iods table.
+ * \param[in/out]	nr_iods		[in]: Number of I/O descriptors in the iods table.
+ *					[out]: Number of returned I/O descriptors. Only relevant
+ *					when \dkey is passed (in that case filtering is done to
+ *					return those akeys that pass a particular filter for a
+ *					given dkey).
  *
- * \param[in,out]	iods		[in/out]: Array of I/O descriptors. Each descriptor is
+ * \param[in/out]	iods		[in]: Array of I/O descriptors. Each descriptor is
  *					associated with a given akey and describes the list of
  *					record extents to fetch from the array.
+ *					[out]: Only relevant when \dkey is passed (see comment for
+ *					\nr_iods).
  *
  * \param[in,out]	anchor		Hash anchor for the next call, it should be set to zeroes
  *					for the first call, it should not be changed by caller
@@ -283,23 +288,33 @@ daos_pipeline_free(daos_pipeline_t *pipeline);
  *					[out]: Size of each individual key along with checksum type
  *					and size stored just after the key in \a sgl_keys.
  *
- * \param[out]		sgl_keys	[in]: Preallocated array of \nr_kds sgls storing all the
- *					dkeys to be returned. Optional when \dkey passed.
+ * \param[in]		sgl_keys	[in]: Preallocated array to store all the dkeys to be
+ *					returned (at most \nr_kds). Optional when \dkey passed.
+ *					When doing aggregations, or when \dkey is passed, only
+ *					one dkey at most is returned (no matter the size of
+ *					\nr_kds).
  *					[out]: All returned dkeys.
  *
- * \param[out]		sgl_recx	[in]: Preallocated array of (\nr_kds * \nr_iods) sgls
- *					storing all the records to be returned. When doing
- *					aggregations, or when \dkey is passed, only one record
- *					(output size will be 1 x \nr_iods) at most is returned (no
- *					matther the size of \nr_kds).
+ * \param[in]		sgl_recx	[in]: Preallocated array to store all the records to be
+ *					returned (at most \nr_kds x \nr_iods). When doing
+ *					aggregations, or when \dkey is passed, only one record (the
+ *					data corresponding to \nr_iods I/O descriptors) at most is
+ *					returned (no matter the size of \nr_kds).
  *					[out]: All returned records.
  *
- * \param[out]		sgl_agg		[in]: Optional preallocated array for aggregated values
- *					(number of values has to match the number of aggregation
- *					filters defined in the pipeline object). All aggregated
- *					values are returned as doubles, no matter the numeric type
- *					of the akey being aggregated. This means that each buffer
- *					here should be at least 8 bytes.
+ * \param[in]		recx_size	[in]: Optional preallocated array to store all the records'
+ *					sizes to be returned (at most \nr_kds x \nr_iods). When
+ *					doing aggregations, or when \dkey is passed, only the sizes
+ *					for one dkey's records (the data corresponding to \nr_iods
+ *					I/O descriptors) at most is returned (no matter the size of
+ *					\nr_kds).
+ *
+ * \param[in]		sgl_agg		[in]: Optional preallocated array of iovs for aggregated
+ *					values (number of iovs has to match the number of
+ *					aggregation filters defined in the pipeline object). All
+ *					aggregated values are returned as doubles, no matter the
+ *					numeric type of the akey being aggregated. This means that
+ *					the buffer for each iov should be at least 8 bytes.
  *					[out]: All returned aggregated values.
  *
  * \param[out]		stats		[in]: Optional preallocated object.
@@ -313,8 +328,8 @@ int
 daos_pipeline_run(daos_handle_t coh, daos_handle_t oh, daos_pipeline_t *pipeline, daos_handle_t th,
 		  uint64_t flags, daos_key_t *dkey, uint32_t *nr_iods, daos_iod_t *iods,
 		  daos_anchor_t *anchor, uint32_t *nr_kds, daos_key_desc_t *kds,
-		  d_sg_list_t *sgl_keys, d_sg_list_t *sgl_recx, d_sg_list_t *sgl_agg,
-		  daos_pipeline_stats_t *stats, daos_event_t *ev);
+		  d_sg_list_t *sgl_keys, d_sg_list_t *sgl_recx, daos_size_t *recx_size,
+		  d_sg_list_t *sgl_agg, daos_pipeline_stats_t *stats, daos_event_t *ev);
 
 #if defined(__cplusplus)
 }

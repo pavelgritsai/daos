@@ -1047,7 +1047,7 @@ func TestPoolGetProp(t *testing.T) {
 						},
 						{
 							Number: propWithVal("scrub", "").Number,
-							Value:  &mgmtpb.PoolProperty_Numval{drpc.PoolScrubSchedContinuous},
+							Value:  &mgmtpb.PoolProperty_Numval{drpc.PoolScrubModeTimed},
 						},
 						{
 							Number: propWithVal("scrub-freq", "").Number,

@@ -120,6 +120,7 @@ struct sts_context {
 	struct daos_csummer	*tsc_csummer;
 	sc_get_cont_fn_t	 tsc_get_cont_fn;
 	sc_yield_fn_t		 tsc_yield_fn;
+	sc_is_idle_fn_t		 tsc_is_idle_fn;
 	void			*tsc_sched_arg;
 	int			 tsc_fd;
 	int			 tsc_expected_rc;
@@ -207,6 +208,13 @@ fake_yield(void *arg)
 	return 0;
 }
 
+static bool fake_is_idle_result;
+static bool
+fake_is_idle()
+{
+	return fake_is_idle_result;
+}
+
 static void
 sts_ctx_init(struct sts_context *ctx)
 {
@@ -228,6 +236,7 @@ sts_ctx_init(struct sts_context *ctx)
 	sts_ctx_cont_init(ctx);
 
 	ctx->tsc_yield_fn = fake_yield;
+	ctx->tsc_is_idle_fn = fake_is_idle;
 	assert_success(
 		daos_csummer_init_with_type(&test_csummer,
 					    HASH_TYPE_CRC16,
@@ -286,8 +295,9 @@ sts_ctx_fetch(struct sts_context *ctx, int oid_lo, int iod_type,
 
 
 	D_FREE(dkey.iov_buf);
-	D_FREE(iod.iod_name.iov_buf);
+	daos_iov_free(&iod.iod_name);
 	D_FREE(data);
+	d_sgl_fini(&sgl, false);
 
 	return rc;
 }
@@ -354,8 +364,10 @@ sts_ctx_update(struct sts_context *ctx, int oid_lo, int iod_type,
 
 	daos_csummer_free_ic(ctx->tsc_csummer, &iod_csum);
 
+	D_FREE(data);
 	D_FREE(dkey.iov_buf);
-	D_FREE(iod.iod_name.iov_buf);
+	daos_iov_free(&iod.iod_name);
+	d_sgl_fini(&sgl, false);
 }
 
 int fake_target_drain_call_count;
@@ -402,6 +414,7 @@ sts_ctx_do_scrub(struct sts_context *ctx)
 	ctx->tsc_scrub_ctx.sc_vos_pool_hdl = ctx->tsc_poh;
 	ctx->tsc_scrub_ctx.sc_sleep_fn = NULL;
 	ctx->tsc_scrub_ctx.sc_yield_fn = ctx->tsc_yield_fn;
+	ctx->tsc_scrub_ctx.sc_is_idle_fn = ctx->tsc_is_idle_fn;
 	ctx->tsc_scrub_ctx.sc_sched_arg = ctx->tsc_sched_arg;
 	ctx->tsc_scrub_ctx.sc_cont_lookup_fn = ctx->tsc_get_cont_fn;
 	ctx->tsc_scrub_ctx.sc_drain_pool_tgt_fn = fake_target_drain;
@@ -419,6 +432,29 @@ sts_ctx_do_scrub(struct sts_context *ctx)
  * Tests
  * ----------------------------------------------------------------------------
  */
+
+static void
+lazy_scrubbing_only_when_idle(void **state)
+{
+	struct sts_context *ctx = *state;
+
+	/* setup data with corruption */
+	sts_ctx_update(ctx, 1, TEST_IOD_SINGLE, "dkey", "akey", 1, true);
+	ctx->tsc_pool.sp_scrub_sched = DAOS_SCRUB_MODE_LAZY;
+
+	/* When not idle it shouldn't run the scrubber and won't find corruption*/
+	fake_is_idle_result = false;
+	sts_ctx_do_scrub(ctx);
+	/* value is still good because didn't actually scrub*/
+	assert_success(sts_ctx_fetch(ctx, 1, TEST_IOD_SINGLE, "dkey", "akey", 1));
+
+	/* When not idle it shouldn't run the scrubber and won't find corruption*/
+	fake_is_idle_result = true;
+	sts_ctx_do_scrub(ctx);
+	/* value is still good because didn't actually scrub*/
+	assert_rc_equal(-DER_CSUM, sts_ctx_fetch(ctx, 1, TEST_IOD_SINGLE, "dkey", "akey", 1));
+}
+
 static void
 scrubbing_with_no_corruption_sv(void **state)
 {
@@ -428,7 +464,7 @@ scrubbing_with_no_corruption_sv(void **state)
 	sts_ctx_update(ctx, 1, TEST_IOD_SINGLE, "dkey", "akey", 1, false);
 
 	/** act */
-	ctx->tsc_pool.sp_scrub_sched = DAOS_SCRUB_SCHED_RUN_WAIT;
+	ctx->tsc_pool.sp_scrub_sched = DAOS_SCRUB_MODE_LAZY;
 	sts_ctx_do_scrub(ctx);
 
 	/** verify after scrub value is still good */
@@ -814,11 +850,11 @@ sts_setup(void **state)
 	*state = ctx;
 
 	/* set some defaults */
-	ctx->tsc_pool.sp_scrub_sched = DAOS_SCRUB_SCHED_RUN_WAIT;
+	ctx->tsc_pool.sp_scrub_sched = DAOS_SCRUB_MODE_LAZY;
 	ctx->tsc_pool.sp_scrub_freq_sec = 1;
-	ctx->tsc_pool.sp_scrub_cred = 1;
 	ctx->tsc_pool.sp_scrub_thresh = 10;
 	fake_target_drain_call_count = 0;
+	fake_is_idle_result = true; /* should be idle most of the time */
 
 	return 0;
 }
@@ -838,6 +874,8 @@ sts_teardown(void **state)
 	{ desc, test_fn, sts_setup, sts_teardown }
 
 static const struct CMUnitTest scrubbing_tests[] = {
+	TS("CSUM_SCRUBBING_00: Only scrub when idle",
+	   lazy_scrubbing_only_when_idle),
 	TS("CSUM_SCRUBBING_01: SV with no corruption",
 	   scrubbing_with_no_corruption_sv),
 	TS("CSUM_SCRUBBING_02: Array with no corruption",

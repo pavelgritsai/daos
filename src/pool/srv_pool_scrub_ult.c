@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2021 Intel Corporation.
+ * (C) Copyright 2021-2022 Intel Corporation.
  *
  * SPDX-License-Identifier: BSD-2-Clause-Patent
  */
@@ -219,7 +219,12 @@ drain_pool_tgt_cb(struct ds_pool *pool)
 	ABT_thread_free(&thread);
 
 	return 0;
+}
 
+static inline bool
+is_idle()
+{
+	return !dss_xstream_is_busy();
 }
 
 /** Setup scrubbing context and start scrubbing the pool */
@@ -254,12 +259,16 @@ scrubbing_ult(void *arg)
 	ctx.sc_cont_is_stopping_fn = cont_is_stopping_cb;
 	ctx.sc_dmi =  dss_get_module_info();
 	ctx.sc_drain_pool_tgt_fn = drain_pool_tgt_cb;
+	ctx.sc_is_idle_fn = is_idle;
 
 	sc_add_pool_metrics(&ctx);
 	while (!dss_ult_exiting(child->spc_scrubbing_req)) {
 		rc = vos_scrub_pool(&ctx);
 		if (rc != 0)
-			break;
+			D_ERROR("Issue with VOS Scrub: "DF_RC"\n", DP_RC(rc));
+
+		/* sleep for 5 seconds between full tree scrubs */
+		sched_req_sleep(child->spc_scrubbing_req, 5000);
 	}
 }
 
@@ -298,55 +307,6 @@ ds_start_scrubbing_ult(struct ds_pool_child *child)
 
 	return 0;
 }
-//
-///** Setup and create the scrubbing ult */
-//int
-//ds_start_scrubbing_ult(struct ds_pool_child *child)
-//{
-//	struct dss_module_info	*dmi = dss_get_module_info();
-//	struct sched_req_attr	 attr = {0};
-//	ABT_thread		 thread = ABT_THREAD_NULL;
-//	int			 rc;
-//
-//	D_ASSERT(child != NULL);
-//	D_ASSERT(child->spc_scrubbing_req == NULL);
-//
-//	/** Don't even create the ULT if scrubbing is disabled. */
-//	if (!scrubbing_is_enabled()) {
-//		C_TRACE(DF_PTGT": Checksum scrubbing DISABLED.\n",
-//			DP_PTGT(child->spc_uuid, dmi->dmi_tgt_id));
-//		return 0;
-//	}
-//
-//	C_TRACE(DF_PTGT": Checksum scrubbing Enabled. Creating ULT.\n",
-//		DP_PTGT(child->spc_uuid, dmi->dmi_tgt_id));
-//
-//	/* There will be several levels iteration, such as pool, container,
-//	 * object, and lower, and so on. Let's use DSS_DEEP_STACK_SZ to avoid
-//	 * ULT overflow.
-//	 */
-//	rc = dss_ult_create(scrubbing_ult, child, DSS_XS_SELF, 0,
-//			    DSS_DEEP_STACK_SZ, &thread);
-//
-//	if (rc) {
-//		D_ERROR(DF_PTGT": Failed to create Scrubbing ULT. "DF_RC"\n",
-//			DP_PTGT(child->spc_uuid, dmi->dmi_tgt_id), DP_RC(rc));
-//		return rc;
-//	}
-//
-//	D_ASSERT(thread != ABT_THREAD_NULL);
-//
-//	sched_req_attr_init(&attr, SCHED_REQ_SCRUB, &child->spc_uuid);
-//	child->spc_scrubbing_req = sched_req_get(&attr, thread);
-//	if (child->spc_scrubbing_req == NULL) {
-//		D_CRIT(DF_PTGT": Failed to get req for Scrubbing ULT\n",
-//		       DP_PTGT(child->spc_uuid, dmi->dmi_tgt_id));
-//		ABT_thread_join(thread);
-//		return -DER_NOMEM;
-//	}
-//
-//	return 0;
-//}
 
 void
 ds_stop_scrubbing_ult(struct ds_pool_child *child)

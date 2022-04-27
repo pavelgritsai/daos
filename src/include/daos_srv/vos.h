@@ -1203,6 +1203,7 @@ typedef int(*sc_get_cont_fn_t)(uuid_t pool_uuid, uuid_t cont_uuid, void *arg,
 typedef void(*sc_put_cont_fn_t)(void *cont);
 typedef bool(*sc_cont_is_stopping_fn_t)(void *cont);
 
+typedef bool (*sc_is_idle_fn_t)();
 typedef int (*sc_sleep_fn_t)(void *, uint32_t msec);
 typedef int (*sc_yield_fn_t)(void *);
 typedef int (*ds_pool_tgt_drain)(struct ds_pool *pool);
@@ -1297,7 +1298,7 @@ struct scrub_ctx {
 	daos_handle_t		 sc_vos_iter_handle;
 
 	/* Schedule controlling function pointers and arg */
-	uint32_t		 sc_credits_left;
+	sc_is_idle_fn_t		 sc_is_idle_fn;
 	sc_sleep_fn_t		 sc_sleep_fn;
 	sc_yield_fn_t		 sc_yield_fn;
 	void			*sc_sched_arg;

@@ -146,21 +146,6 @@ sc_get_rec_in_chunk_at_idx(const struct scrub_ctx *ctx, uint32_t i)
 	return range.dcr_nr;
 }
 
-static void
-sc_credit_decrement(struct scrub_ctx *ctx)
-{
-	if (ctx->sc_credits_left == 0)
-		return;
-	ctx->sc_credits_left--;
-}
-
-static void
-sc_credit_reset(struct scrub_ctx *ctx)
-{
-	if (ctx->sc_credits_left == 0)
-		ctx->sc_credits_left = ctx->sc_pool->sp_scrub_cred;
-}
-
 void
 sc_yield_sleep_while_running(struct scrub_ctx *ctx)
 {
@@ -171,11 +156,8 @@ sc_yield_sleep_while_running(struct scrub_ctx *ctx)
 	D_ASSERT(ctx->sc_pool->sp_scrub_freq_sec > 0);
 
 	d_gettime(&now);
-	sc_credit_decrement(ctx);
-	if (ctx->sc_credits_left > 0)
-		return;
 
-	if (sc_schedule(ctx) == DAOS_SCRUB_SCHED_CONTINUOUS) {
+	if (sc_schedule(ctx) == DAOS_SCRUB_MODE_TIMED) {
 		msec_between = get_ms_between_periods(ctx->sc_pool_start_scrub,
 			now, ctx->sc_pool->sp_scrub_freq_sec,
 			ctx->sc_pool_last_csum_calcs,
@@ -187,20 +169,6 @@ sc_yield_sleep_while_running(struct scrub_ctx *ctx)
 		sc_yield(ctx);
 	else
 		sc_sleep(ctx, msec_between);
-
-	sc_credit_reset(ctx);
-}
-
-/*
- * DAOS_CSUM_SCRUB_DISABLED_WAIT_SEC can be set in the server config to change
- * how long to wait before checking again if the scrubber is enabled.
- */
-static uint32_t
-seconds_to_wait_while_disabled()
-{
-	char *sec = getenv("DAOS_CSUM_SCRUB_DISABLED_WAIT_SEC");
-
-	return sec != NULL ? atoll(sec) : 5;
 }
 
 void
@@ -223,7 +191,14 @@ sc_yield_or_sleep(struct scrub_ctx *ctx)
 static inline bool
 sc_scrub_enabled(struct scrub_ctx *ctx)
 {
-	return sc_schedule(ctx) != DAOS_SCRUB_SCHED_OFF && sc_freq(ctx) > 0;
+	return sc_schedule(ctx) != DAOS_SCRUB_MODE_OFF && sc_freq(ctx) > 0;
+}
+
+static inline bool
+sc_should_scrub(struct scrub_ctx *ctx)
+{
+	return sc_scrub_enabled(ctx) &&
+	       !(ctx->sc_pool->sp_scrub_sched == DAOS_SCRUB_MODE_LAZY && !ctx->sc_is_idle_fn());
 }
 
 static void
@@ -753,10 +728,8 @@ vos_scrub_pool(struct scrub_ctx *ctx)
 		return -DER_INVAL;
 	}
 
-	if (!sc_scrub_enabled(ctx)) {
-		sc_sleep(ctx, seconds_to_wait_while_disabled() * 1000);
+	if (!sc_should_scrub(ctx))
 		return 0;
-	}
 
 	sc_pool_start(ctx);
 

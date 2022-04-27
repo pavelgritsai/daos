@@ -83,7 +83,6 @@ struct ds_pool {
 	/** checksum scrubbing properties */
 	uint64_t		sp_scrub_sched;
 	uint64_t		sp_scrub_freq_sec;
-	uint64_t		sp_scrub_cred;
 	uint64_t		sp_scrub_thresh;
 };
 

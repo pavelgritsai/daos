@@ -66,7 +66,6 @@ extern d_iov_t ds_pool_prop_upgrade_status;	/* upgrade status */
 extern d_iov_t ds_pool_prop_upgrade_global_version;
 extern d_iov_t ds_pool_prop_scrub_sched;	/* uint64_t */
 extern d_iov_t ds_pool_prop_scrub_freq;		/* uint64_t */
-extern d_iov_t ds_pool_prop_scrub_cred;		/* uint64_t */
 extern d_iov_t ds_pool_prop_scrub_thresh;	/* uint64_t */
 
 /*

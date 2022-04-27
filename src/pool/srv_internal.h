@@ -60,7 +60,6 @@ struct pool_iv_prop {
 	uint64_t	pip_self_heal;
 	uint64_t	pip_scrub_sched;
 	uint64_t	pip_scrub_freq;
-	uint64_t	pip_scrub_cred;
 	uint64_t	pip_scrub_thresh;
 	uint64_t	pip_reclaim;
 	uint64_t	pip_ec_cell_sz;

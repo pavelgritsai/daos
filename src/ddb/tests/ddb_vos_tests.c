@@ -752,6 +752,26 @@ update_value_to_insert_tests(void **state)
 	assert_update_new_path(poh, &vtp);
 }
 
+#include <daos_srv/smd.h>
+
+static void
+smd_exploration(void **state)
+{
+	assert_success(smd_init(vos_db_get()));
+	d_list_t		 s_dev_list;
+	D_INIT_LIST_HEAD(&s_dev_list);
+
+	int nr;
+
+	smd_dev_list(&s_dev_list, &nr);
+
+	D_PRINT("[RYON] %s:%d [%s()] > nr: %d\n", __FILE__, __LINE__, __FUNCTION__, nr);
+
+
+
+	smd_fini();
+}
+
 #define DELETE_SUCCESS(poh, vtp) assert_success(dv_delete(poh, &vtp))
 static void
 delete_path_parts_tests(void **state)
@@ -886,6 +906,7 @@ const struct CMUnitTest dv_test_cases[] = {
 	TEST(verify_correct_params_for_update_value_tests),
 	TEST(update_value_to_modify_tests),
 	TEST(update_value_to_insert_tests),
+	TEST(smd_exploration),
 };
 
 int

@@ -234,7 +234,7 @@ ddb_test_pool_setup(struct dt_vos_pool_ctx *tctx)
 		return rc;
 	}
 
-	rc = vos_pool_create(tctx->dvt_pmem_file, tctx->dvt_pool_uuid, 0, 0, 0, NULL);
+	rc = vos_pool_create(tctx->dvt_pmem_file, tctx->dvt_pool_uuid, size, size * 2, 0, NULL);
 	if (rc) {
 		close(tctx->dvt_fd);
 		return rc;
@@ -581,9 +581,9 @@ int main(int argc, char *argv[])
 		rc += func(); } while (0)
 
 		/* filtering suites and tests */
-		char test_suites[] = "";
+		char test_suites[] = "c";
 #if CMOCKA_FILTER_SUPPORTED == 1 /** requires cmocka 1.1.5 */
-		cmocka_set_test_filter("**");
+		cmocka_set_test_filter("*smd_exploration*");
 #endif
 		RUN_TEST_SUIT('a', ddb_parse_tests_run);
 		RUN_TEST_SUIT('b', ddb_cmd_options_tests_run);

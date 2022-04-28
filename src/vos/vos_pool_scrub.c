@@ -149,26 +149,26 @@ sc_get_rec_in_chunk_at_idx(const struct scrub_ctx *ctx, uint32_t i)
 void
 sc_yield_sleep_while_running(struct scrub_ctx *ctx)
 {
-	uint64_t msec_between = 0;
-	struct timespec now;
-
 	/* must have a frequency set */
 	D_ASSERT(ctx->sc_pool->sp_scrub_freq_sec > 0);
 
-	d_gettime(&now);
-
 	if (sc_schedule(ctx) == DAOS_SCRUB_MODE_TIMED) {
+		struct timespec	now;
+		uint64_t	msec_between;
+
+		d_gettime(&now);
 		msec_between = get_ms_between_periods(ctx->sc_pool_start_scrub,
 			now, ctx->sc_pool->sp_scrub_freq_sec,
 			ctx->sc_pool_last_csum_calcs,
 			/* -1 to convert to index (from count) */
 			ctx->sc_pool_csum_calcs - 1);
-	}
-
-	if (msec_between == 0)
-		sc_yield(ctx);
-	else
 		sc_sleep(ctx, msec_between);
+	} else if (sc_schedule(ctx) == DAOS_SCRUB_MODE_TIMED) {
+		sc_yield(ctx);
+		while (!ctx->sc_is_idle_fn()) {
+			sc_sleep(ctx, 5000);
+		}
+	}
 }
 
 void

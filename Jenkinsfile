@@ -138,10 +138,13 @@ pipeline {
         booleanParam(name: 'CI_MORE_FUNCTIONAL_PR_TESTS',
                      defaultValue: false,
                      description: 'Enable more distros for functional CI tests')
+        booleanParam(name: 'CI_FUNCTIONAL_el8_VALGRIND_TEST',
+                     defaultValue: false,
+                     description: 'Run the functional CentOS 8 CI tests' +
+                                  ' with Valgrind')
         booleanParam(name: 'CI_FUNCTIONAL_el8_TEST',
                      defaultValue: true,
-                     description: 'Run the functional CentOS 8 CI tests' +
-                                  '  Requires CI_MORE_FUNCTIONAL_PR_TESTS')
+                     description: 'Run the functional CentOS 8 CI tests')
         booleanParam(name: 'CI_FUNCTIONAL_leap15_TEST',
                      defaultValue: true,
                      description: 'Run the functional OpenSUSE Leap 15 CI tests' +

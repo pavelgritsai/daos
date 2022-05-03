@@ -23,7 +23,6 @@ struct ddb_ctx g_ctx = {
 	.dc_io_ft.ddb_read_file = dvt_fake_read_file,
 	.dc_io_ft.ddb_get_file_size = dvt_fake_get_file_size,
 	.dc_io_ft.ddb_get_file_exists = dvt_fake_get_file_exists,
-
 };
 
 static uint32_t fake_write_file_called;
@@ -276,6 +275,42 @@ load_cmd_tests(void **state)
 	assert_rc_equal(-DER_NONEXIST, ddb_run_load(&g_ctx, &opt));
 }
 
+static void
+rm_ilog_cmd_tests(void **state)
+{
+	struct rm_ilog_options opt = {0};
+
+	assert_rc_equal(-DER_INVAL, ddb_run_rm_ilog(&g_ctx, &opt));
+	opt.path = "[0]"; /* just container ... bad */
+	assert_rc_equal(-DER_INVAL, ddb_run_rm_ilog(&g_ctx, &opt));
+
+	opt.path = "[1]/[0]"; /* object */
+	assert_success(ddb_run_rm_ilog(&g_ctx, &opt));
+	opt.path = "[2]/[0]/[0]"; /* dkey */
+	assert_success(ddb_run_rm_ilog(&g_ctx, &opt));
+}
+
+static void
+process_ilog_cmd_tests(void **state)
+{
+	struct process_ilog_options opt = {0};
+
+	assert_rc_equal(-DER_INVAL, ddb_run_process_ilog(&g_ctx, &opt));
+	opt.path = "[0]"; /* just container ... bad */
+	assert_rc_equal(-DER_INVAL, ddb_run_process_ilog(&g_ctx, &opt));
+
+	opt.path = "[1]/[0]"; /* object */
+	assert_success(ddb_run_process_ilog(&g_ctx, &opt));
+	opt.path = "[2]/[0]/[0]"; /* dkey */
+	assert_success(ddb_run_process_ilog(&g_ctx, &opt));
+}
+
+static void
+clear_dtx_cmd_tests(void **state)
+{
+	fail_msg("Implement clear_dtx_cmd_tests");
+}
+
 /*
  * --------------------------------------------------------------
  * End test functions
@@ -321,6 +356,9 @@ static const struct CMUnitTest tests[] = {
 	TEST(dump_dtx_cmd_tests),
 	TEST(rm_cmd_tests),
 	TEST(load_cmd_tests),
+	TEST(rm_ilog_cmd_tests),
+	TEST(process_ilog_cmd_tests),
+	TEST(clear_dtx_cmd_tests),
 };
 
 int

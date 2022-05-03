@@ -462,3 +462,57 @@ done:
 
 	return rc;
 }
+
+static int
+process_ilog_op(struct ddb_ctx *ctx, char *path, enum ddb_ilog_op op)
+{
+	struct dv_tree_path_builder	 vtpb = {0};
+	daos_handle_t			 coh = {0};
+	int				 rc;
+	struct dv_tree_path		*vtp = &vtpb.vtp_path;
+
+	if (path == NULL) {
+		ddb_error(ctx, "path is required\n");
+		return -DER_INVAL;
+	}
+
+	rc = init_path(ctx->dc_poh, path, &vtpb);
+	if (!SUCCESS(rc))
+		D_GOTO(done, rc);
+
+	if (!dv_has_obj(vtp)) /* At least object is required */
+		D_GOTO(done, rc = -DER_INVAL);
+
+	rc = dv_cont_open(ctx->dc_poh, vtp->vtp_cont, &coh);
+	if (!SUCCESS(rc))
+		D_GOTO(done, rc);
+
+	if (dv_has_dkey(vtp))
+		rc = dv_process_dkey_ilog_entries(coh, vtp->vtp_oid, &vtp->vtp_dkey, op);
+	else
+		rc = dv_process_obj_ilog_entries(coh, vtp->vtp_oid, op);
+
+done:
+	dv_cont_close(&coh);
+	ddb_vtp_fini(&vtpb);
+
+	return rc;
+}
+
+int
+ddb_run_rm_ilog(struct ddb_ctx *ctx, struct rm_ilog_options *opt)
+{
+	return process_ilog_op(ctx, opt->path, DDB_ILOG_OP_ABORT);
+}
+
+int
+ddb_run_process_ilog(struct ddb_ctx *ctx, struct process_ilog_options *opt)
+{
+	return process_ilog_op(ctx, opt->path, DDB_ILOG_OP_PERSIST);
+}
+
+int
+ddb_run_clear_dtx(struct ddb_ctx *ctx, struct clear_dtx_options *opt)
+{
+	return 0;
+}

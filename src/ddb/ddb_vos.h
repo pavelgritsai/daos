@@ -124,12 +124,22 @@ struct ddb_ilog_entry {
 	uint16_t	die_punch_minor_eph;
 };
 
+enum ddb_ilog_op {
+	DDB_ILOG_OP_UNKNOWN = 0,
+	DDB_ILOG_OP_ABORT = 1,
+	DDB_ILOG_OP_PERSIST = 2,
+};
+
 typedef int (*dv_dump_ilog_entry)(void *cb_arg, struct ddb_ilog_entry *entry);
 int dv_get_obj_ilog_entries(daos_handle_t coh, daos_unit_oid_t oid, dv_dump_ilog_entry cb,
 			    void *cb_args);
+int dv_process_obj_ilog_entries(daos_handle_t coh, daos_unit_oid_t oid, enum ddb_ilog_op op);
+
 int dv_get_dkey_ilog_entries(daos_handle_t coh, daos_unit_oid_t oid, daos_key_t *dkey,
 			     dv_dump_ilog_entry cb, void *cb_args);
 
+int dv_process_dkey_ilog_entries(daos_handle_t coh, daos_unit_oid_t oid, daos_key_t *dkey,
+				 enum ddb_ilog_op op);
 
 struct dv_dtx_committed_entry {
 	uuid_t		ddtx_uuid;
@@ -166,6 +176,8 @@ typedef int (*dv_committed_dtx_handler)(struct dv_dtx_committed_entry *entry, vo
 int dv_committed_dtx(daos_handle_t coh, dv_committed_dtx_handler handler_cb, void *handler_arg);
 typedef int (*dv_active_dtx_handler)(struct dv_dtx_active_entry *entry, void *cb_arg);
 int dv_active_dtx(daos_handle_t coh, dv_active_dtx_handler handler_cb, void *handler_arg);
+int dv_clear_committed_table(daos_handle_t coh);
+
 int dv_delete(daos_handle_t poh, struct dv_tree_path *vtp);
 int dv_update(daos_handle_t poh, struct dv_tree_path *vtp, d_iov_t *iov, daos_epoch_t epoch);
 

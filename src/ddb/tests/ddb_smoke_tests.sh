@@ -74,6 +74,12 @@ run_cmd cat /tmp/ddb_value_dump
 run_cmd ddb $vos_file -R 'ls [0]/[0]/[0] -r'
 diff /tmp/ddb_new_value /tmp/ddb_value_dump
 
+msg "'rm'"
+run_cmd ddb $vos_file -R 'ls'
+run_cmd ddb $vos_file -R 'rm [1]'
+run_cmd ddb $vos_file -R 'ls'
+
+
 msg "'superblock', 'ilog' and 'dtx' dumps"
 run_cmd ddb $vos_file -R 'dump_superblock'
 run_cmd ddb $vos_file -R 'dump_ilog [0]/[0]'
@@ -81,7 +87,4 @@ run_cmd ddb $vos_file -R 'dump_ilog [0]/[0]/[0]'
 
 run_cmd ddb $vos_file -R 'dump_dtx [0]'
 
-msg "'rm'"
-run_cmd ddb $vos_file -R 'ls'
-run_cmd ddb $vos_file -R 'rm [1]'
-run_cmd ddb $vos_file -R 'ls'
+

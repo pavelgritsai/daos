@@ -70,7 +70,7 @@ typedef struct {
 	uint64_t		da_id;
 	/** Default Chunk size for all files in container */
 	daos_size_t		da_chunk_size;
-	/** Default Object Class for all objects in the container */
+	/** Default Object Class for all files in the container */
 	daos_oclass_id_t	da_oclass_id;
 	/** DAOS properties on the DFS container */
 	daos_prop_t		*da_props;
@@ -80,6 +80,8 @@ typedef struct {
 	 * mode will be used. In the future, Balanced mode will be the default.
 	 */
 	uint32_t		da_mode;
+	/** Default Object Class for all directories in the container */
+	daos_oclass_id_t	da_dir_oclass_id;
 	/** hints for POSIX container creation DFS_DIRS/FILES_LARGE/SMALL */
 	uint64_t		da_hints;
 } dfs_attr_t;

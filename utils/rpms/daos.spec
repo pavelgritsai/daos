@@ -27,7 +27,7 @@
 
 Name:          daos
 Version:       2.3.100
-Release:       7%{?relval}%{?dist}
+Release:       8%{?relval}%{?dist}
 Summary:       DAOS Storage Engine
 
 License:       BSD-2-Clause-Patent
@@ -197,6 +197,13 @@ Obsoletes: cart < 1000
 %description server
 This is the package needed to run a DAOS server
 
+%package admin
+Summary: DAOS admin tools
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description admin
+This package contains DAOS administrative tools (e.g. dmg).
+
 %package client
 Summary: The DAOS client
 Requires: %{name}%{?_isa} = %{version}-%{release}
@@ -234,6 +241,7 @@ This is the package is a metapackage to install all of the test packages
 %package client-tests
 Summary: The DAOS test suite
 Requires: %{name}-client%{?_isa} = %{version}-%{release}
+Requires: %{name}-admin%{?_isa} = %{version}-%{release}
 %if (0%{?rhel} >= 7) && (0%{?rhel} < 8)
 Requires: python36-distro
 Requires: python36-tabulate
@@ -269,6 +277,7 @@ This is the package needed to run the DAOS client test suite openmpi tools
 %package server-tests
 Summary: The DAOS server test suite (server tests)
 Requires: %{name}-server%{?_isa} = %{version}-%{release}
+Requires: %{name}-admin%{?_isa} = %{version}-%{release}
 
 %description server-tests
 This is the package needed to run the DAOS server test suite (server tests)
@@ -454,11 +463,15 @@ getent passwd daos_agent >/dev/null || useradd -s /sbin/nologin -r -g daos_agent
 %{_unitdir}/%{server_svc_name}
 %{_sysctldir}/%{sysctl_script_name}
 
+%files admin
+%{_bindir}/dmg
+%{_mandir}/man8/dmg.8*
+%config(noreplace) %{conf_dir}/daos_control.yml
+
 %files client
 %{_libdir}/libdaos.so.*
 %{_bindir}/cart_ctl
 %{_bindir}/self_test
-%{_bindir}/dmg
 %{_bindir}/daos_agent
 %{_bindir}/dfuse
 %{_bindir}/daos
@@ -481,10 +494,8 @@ getent passwd daos_agent >/dev/null || useradd -s /sbin/nologin -r -g daos_agent
 %{python3_sitearch}/pydaos/pydaos_shim.so
 %{_datadir}/%{name}/ioil-ld-opts
 %config(noreplace) %{conf_dir}/daos_agent.yml
-%config(noreplace) %{conf_dir}/daos_control.yml
 %{_unitdir}/%{agent_svc_name}
 %{_mandir}/man8/daos.8*
-%{_mandir}/man8/dmg.8*
 
 %files client-tests
 %dir %{daoshome}
@@ -555,6 +566,9 @@ getent passwd daos_agent >/dev/null || useradd -s /sbin/nologin -r -g daos_agent
 # No files in a shim package
 
 %changelog
+* Mon May 9 2022 Michael MacDonald <mjmac.macdonald@intel.com> 2.3.100-8
+- Move dmg to new daos-admin RPM
+
 * Fri May  6 2022 Ashley Pittman <ashley.m.pittman@intel.com> 2.3.100-7
 - Add dfuse unit-test binary to call from ftest.
 

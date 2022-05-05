@@ -101,7 +101,7 @@ pipeline {
                description: 'Image to used for Centos 7 CI tests.  I.e. el7, el7.9, etc.')
         string(name: 'CI_CENTOS8_TARGET',
                defaultValue: '',
-               description: 'Image to used for Centos 8 CI tests.  I.e. el8, el8.3, etc.')
+               description: 'Image to used for Centos 8 CI tests.  I.e. el8, el8.4, etc.')
         string(name: 'CI_LEAP15_TARGET',
                defaultValue: '',
                description: 'Image to use for OpenSUSE Leap CI tests.  I.e. leap15, leap15.2, etc.')
@@ -820,7 +820,7 @@ pipeline {
                                 daos_pkg_version: daosPackagesVersion(next_version)
                     }
                 } // stage('Test CentOS 7 RPMs')
-                stage('Test CentOS 8.3.2011 RPMs') {
+                stage('Test EL 8.4 RPMs') {
                     when {
                         beforeAgent true
                         expression { ! skipStage() }
@@ -830,8 +830,8 @@ pipeline {
                     }
                     steps {
                         testRpm inst_repos: daosRepos(),
-                                target: 'el8.3',
-                                daos_pkg_version: daosPackagesVersion("centos8", next_version)
+                                target: 'el8.4',
+                                daos_pkg_version: daosPackagesVersion("el8", next_version)
                    }
                 } // stage('Test CentOS 7 RPMs')
                 stage('Test Leap 15.2 RPMs') {

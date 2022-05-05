@@ -223,8 +223,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 	}
 	username := usrCurrent.Username
 	if username == "root" {
-		t.Log("Skip prepBdevStorage tests when run with root user")
-		return
+		t.Fatal("prepBdevStorage tests cannot be run as root user")
 	}
 
 	// basic engine configs populated enough to complete validation
@@ -254,18 +253,31 @@ func TestServer_prepBdevStorage(t *testing.T) {
 		getHpiErr       error
 		hugePagesFree   int
 		bmbc            *bdev.MockBackendConfig
+		overrideUser    string
 		expPrepErr      error
 		expPrepCall     *storage.BdevPrepareRequest
 		expMemChkErr    error
 		expMemSize      int
 		expHugePageSize int
 	}{
-		"vfio disabled": {
+		"vfio disabled; non-root user": {
 			srvCfgExtra: func(sc *config.Server) *config.Server {
 				return sc.WithDisableVFIO(true).
 					WithEngines(nvmeEngine(0), nvmeEngine(1))
 			},
 			expPrepErr: FaultVfioDisabled,
+		},
+		"vfio disabled; root user": {
+			srvCfgExtra: func(sc *config.Server) *config.Server {
+				return sc.WithDisableVFIO(true).
+					WithEngines(scmEngine(0), scmEngine(1))
+			},
+			overrideUser: "root",
+			expPrepCall: &storage.BdevPrepareRequest{
+				HugePageCount: 1024,
+				TargetUser:    username,
+				EnableVMD:     false, // VMD should be disabled when VFIO is disabled
+			},
 		},
 		"iommu disabled": {
 			iommuDisabled: true,
@@ -274,6 +286,13 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			},
 			expPrepErr: FaultIommuDisabled,
 		},
+		//		"vmd disabled": {
+		//			srvCfgExtra: func(sc *config.Server) *config.Server {
+		//				return sc.WithDisableVFIO(true).
+		//					WithEngines(nvmeEngine(0), nvmeEngine(1))
+		//			},
+		//			expPrepErr: FaultVfioDisabled,
+		//		},
 		"no bdevs configured; -1 hugepages requested": {
 			srvCfgExtra: func(sc *config.Server) *config.Server {
 				return sc.WithNrHugePages(-1).
@@ -288,6 +307,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: scanMinHugePageCount,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 		},
 		"no bdevs configured; nr_hugepages set": {
@@ -298,6 +318,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: 1024,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 		},
 		"2 engines both numa 0; hugepage alloc only on numa 0": {
@@ -315,6 +336,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				PCIAllowList: fmt.Sprintf("%s%s%s", common.MockPCIAddr(1),
 					storage.BdevPciAddrSep, common.MockPCIAddr(2)),
 				PCIBlockList: common.MockPCIAddr(1),
+				EnableVMD:    true,
 			},
 			expMemSize:      16384,
 			expHugePageSize: 2,
@@ -329,6 +351,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				HugePageCount: 16386,
 				HugeNodes:     "1",
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 			expMemSize:      16384,
 			expHugePageSize: 2,
@@ -343,6 +366,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				HugePageCount: 8194, // 2 extra huge pages requested per-engine
 				HugeNodes:     "0,1",
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 			expMemSize:      16384,
 			expHugePageSize: 2,
@@ -357,6 +381,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				HugePageCount: 8194,
 				HugeNodes:     "0,1",
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 			expMemChkErr: errors.New("0: want 16 GiB (8192 hugepages), got 16 GiB (8191"),
 		},
@@ -365,6 +390,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: 128,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 		},
 		"2 engines; scm only; nr_hugepages unset; insufficient free": {
@@ -372,6 +398,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: 128,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 			expMemChkErr: errors.New("requested 128 hugepages; got 0"),
 		},
@@ -380,6 +407,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: 128,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 		},
 		"0 engines; nr_hugepages unset; insufficient free": {
@@ -387,6 +415,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: 128,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 
 			expMemChkErr: errors.New("requested 128 hugepages; got 0"),
@@ -396,6 +425,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 			expPrepCall: &storage.BdevPrepareRequest{
 				HugePageCount: 128,
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 		},
 		"1 engine; nr_hugepages unset; hpi fetch fails": {
@@ -408,6 +438,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				HugePageCount: 8194,
 				HugeNodes:     "0",
 				TargetUser:    username,
+				EnableVMD:     true,
 			},
 			expMemChkErr: errors.New("could not find hugepage info"),
 		},
@@ -430,6 +461,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				PCIAllowList: fmt.Sprintf("%s%s%s", common.MockPCIAddr(1),
 					storage.BdevPciAddrSep, common.MockPCIAddr(2)),
 				PCIBlockList: common.MockPCIAddr(1),
+				EnableVMD:    true,
 			},
 			expMemSize:      16384,
 			expHugePageSize: 2,
@@ -439,8 +471,7 @@ func TestServer_prepBdevStorage(t *testing.T) {
 				return sc.WithNrHugePages(16384).
 					WithEngines(nvmeEngine(0), nvmeEngine(1)).
 					WithBdevInclude(common.MockPCIAddr(1), common.MockPCIAddr(2)).
-					WithBdevExclude(common.MockPCIAddr(1)).
-					WithEnableVMD(true)
+					WithBdevExclude(common.MockPCIAddr(1))
 			},
 			hugePagesFree: 16384,
 			bmbc: &bdev.MockBackendConfig{
@@ -489,6 +520,10 @@ func TestServer_prepBdevStorage(t *testing.T) {
 					scm.NewProvider(log, scm.NewMockBackend(nil), sp),
 					mbp),
 				srvCfg: cfg,
+			}
+
+			if tc.overrideUser != "" {
+				srv.runningUser = &user.User{Username: tc.overrideUser}
 			}
 
 			gotErr := prepBdevStorage(srv, !tc.iommuDisabled)

@@ -289,6 +289,7 @@ enum iv_key {
 	 * other servers
 	 */
 	IV_CONT_AGG_EPOCH_BOUNDRY,
+	IV_CHK,
 };
 
 int ds_iv_fetch(struct ds_iv_ns *ns, struct ds_iv_key *key, d_sg_list_t *value,

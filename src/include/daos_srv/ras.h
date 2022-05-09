@@ -174,4 +174,7 @@ ds_notify_pool_svc_update(uuid_t *pool, d_rank_list_t *svcl);
 int
 ds_notify_swim_rank_dead(d_rank_t rank, uint64_t incarnation);
 
+int
+ds_chk_upcall(void *rpt);
+
 #endif /* __DAOS_RAS_H_ */

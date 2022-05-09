@@ -2415,24 +2415,268 @@ out:
 void
 ds_mgmt_drpc_check_start(Drpc__Call *drpc_req, Drpc__Response *drpc_resp)
 {
+	struct drpc_alloc	 alloc = PROTO_ALLOCATOR_INIT(alloc);
+	Mgmt__CheckStartReq	*req = NULL;
+	Mgmt__CheckStartResp	 resp = MGMT__CHECK_START_RESP__INIT;
+	uint8_t			*body;
+	size_t			 len;
+	int			 rc = 0;
+
+	if (!ds_mgmt_check_enabled()) {
+		D_ERROR("Not in check mode\n");
+		drpc_resp->status = DRPC__STATUS__UNKNOWN_MODULE;
+		return;
+	}
+
+	req = mgmt__check_start_req__unpack(&alloc.alloc, drpc_req->body.len, drpc_req->body.data);
+	if (alloc.oom || req == NULL) {
+		D_ERROR("Failed to unpack req (start check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_UNMARSHAL_PAYLOAD;
+		return;
+	}
+
+	D_INFO("Received request to start check\n");
+
+	/* XXX: support to check to the specified phase in the future. */
+
+	rc = ds_mgmt_check_start(req->n_ranks, req->ranks, req->n_policies,
+				 (struct chk_policy **)req->policies, req->n_uuids,
+				 (uuid_t *)req->uuids, req->flags, -1 /* phase */);
+	if (rc != 0)
+		D_ERROR("Failed to start check: "DF_RC"\n", DP_RC(rc));
+
+	resp.status = rc;
+	len = mgmt__check_start_resp__get_packed_size(&resp);
+	D_ALLOC(body, len);
+	if (body == NULL) {
+		D_ERROR("Failed to allocate response body (start check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_MARSHAL;
+	} else {
+		mgmt__check_start_resp__pack(&resp, body);
+		drpc_resp->body.len = len;
+		drpc_resp->body.data = body;
+	}
+
+	mgmt__check_start_req__free_unpacked(req, &alloc.alloc);
 }
 
 void
 ds_mgmt_drpc_check_stop(Drpc__Call *drpc_req, Drpc__Response *drpc_resp)
 {
+	struct drpc_alloc	 alloc = PROTO_ALLOCATOR_INIT(alloc);
+	Mgmt__CheckStopReq	*req = NULL;
+	Mgmt__CheckStopResp	 resp = MGMT__CHECK_STOP_RESP__INIT;
+	uint8_t			*body;
+	size_t			 len;
+	int			 rc = 0;
+
+	if (!ds_mgmt_check_enabled()) {
+		D_ERROR("Not in check mode\n");
+		drpc_resp->status = DRPC__STATUS__UNKNOWN_MODULE;
+		return;
+	}
+
+	req = mgmt__check_stop_req__unpack(&alloc.alloc, drpc_req->body.len, drpc_req->body.data);
+	if (alloc.oom || req == NULL) {
+		D_ERROR("Failed to unpack req (stop check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_UNMARSHAL_PAYLOAD;
+		return;
+	}
+
+	D_INFO("Received request to stop check\n");
+
+	rc = ds_mgmt_check_stop(req->n_uuids, (uuid_t *)req->uuids);
+	if (rc != 0)
+		D_ERROR("Failed to stop check: "DF_RC"\n", DP_RC(rc));
+
+	resp.status = rc;
+	len = mgmt__check_stop_resp__get_packed_size(&resp);
+	D_ALLOC(body, len);
+	if (body == NULL) {
+		D_ERROR("Failed to allocate response body (stop check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_MARSHAL;
+	} else {
+		mgmt__check_stop_resp__pack(&resp, body);
+		drpc_resp->body.len = len;
+		drpc_resp->body.data = body;
+	}
+
+	mgmt__check_stop_req__free_unpacked(req, &alloc.alloc);
+}
+
+static int
+ds_chk_query_cb(void *args, void *data)
+{
+	return 0;
 }
 
 void
 ds_mgmt_drpc_check_query(Drpc__Call *drpc_req, Drpc__Response *drpc_resp)
 {
+	struct drpc_alloc		 alloc = PROTO_ALLOCATOR_INIT(alloc);
+	Mgmt__CheckQueryReq		*req = NULL;
+	Mgmt__CheckQueryResp		 resp = MGMT__CHECK_QUERY_RESP__INIT;
+	uint8_t				*body;
+	size_t				 len;
+	int				 rc = 0;
+
+	if (!ds_mgmt_check_enabled()) {
+		D_ERROR("Not in check mode\n");
+		drpc_resp->status = DRPC__STATUS__UNKNOWN_MODULE;
+		return;
+	}
+
+	req = mgmt__check_query_req__unpack(&alloc.alloc, drpc_req->body.len, drpc_req->body.data);
+	if (alloc.oom || req == NULL) {
+		D_ERROR("Failed to unpack req (query check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_UNMARSHAL_PAYLOAD;
+		return;
+	}
+
+	D_INFO("Received request to query check\n");
+
+	rc = ds_mgmt_check_query(req->n_uuids, (uuid_t *)req->uuids, ds_chk_query_cb, &resp);
+	if (rc != 0)
+		D_ERROR("Failed to query check: "DF_RC"\n", DP_RC(rc));
+
+	resp.req_status = rc;
+	len = mgmt__check_query_resp__get_packed_size(&resp);
+	D_ALLOC(body, len);
+	if (body == NULL) {
+		D_ERROR("Failed to allocate response body (query check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_MARSHAL;
+	} else {
+		mgmt__check_query_resp__pack(&resp, body);
+		drpc_resp->body.len = len;
+		drpc_resp->body.data = body;
+	}
+
+	mgmt__check_query_req__free_unpacked(req, &alloc.alloc);
+}
+
+static int
+ds_chk_prop_cb(void *buf, struct chk_policy **policies, int cnt, uint32_t flags)
+{
+	Mgmt__CheckInconsistPolicy	**ply = NULL;
+	Mgmt__CheckPropResp		 *resp = buf;
+	int				  rc = 0;
+	int				  i = 0;
+
+	D_ALLOC_ARRAY(ply, cnt);
+	if (ply == NULL)
+		return -DER_NOMEM;
+
+	for (i = 0; i < cnt; i++) {
+		D_ALLOC(ply[i], sizeof(*ply[i]));
+		if (ply[i] == NULL)
+			D_GOTO(out, rc = -DER_NOMEM);
+
+		ply[i]->inconsist_cas = policies[i]->cp_class;
+		ply[i]->inconsist_act = policies[i]->cp_action;
+	}
+
+
+out:
+	if (rc != 0) {
+		int	j;
+
+		for (j = 0; j < i; j++)
+			D_FREE(ply[j]);
+		D_FREE(ply);
+	} else {
+		resp->policies = ply;
+		resp->n_policies = cnt;
+		resp->flags = flags;
+	}
+
+	return rc;
 }
 
 void
 ds_mgmt_drpc_check_prop(Drpc__Call *drpc_req, Drpc__Response *drpc_resp)
 {
+	struct drpc_alloc		 alloc = PROTO_ALLOCATOR_INIT(alloc);
+	Mgmt__CheckPropReq		*req = NULL;
+	Mgmt__CheckPropResp		 resp = MGMT__CHECK_PROP_RESP__INIT;
+	uint8_t				*body;
+	size_t				 len;
+	int				 rc = 0;
+
+	if (!ds_mgmt_check_enabled()) {
+		D_ERROR("Not in check mode\n");
+		drpc_resp->status = DRPC__STATUS__UNKNOWN_MODULE;
+		return;
+	}
+
+	req = mgmt__check_prop_req__unpack(&alloc.alloc, drpc_req->body.len, drpc_req->body.data);
+	if (alloc.oom || req == NULL) {
+		D_ERROR("Failed to unpack req (get property for check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_UNMARSHAL_PAYLOAD;
+		return;
+	}
+
+	D_INFO("Received request to get property for check\n");
+
+	rc = ds_mgmt_check_prop(ds_chk_prop_cb, &resp);
+	if (rc != 0)
+		D_ERROR("Failed to set get property for check: "DF_RC"\n", DP_RC(rc));
+
+	resp.status = rc;
+	len = mgmt__check_prop_resp__get_packed_size(&resp);
+	D_ALLOC(body, len);
+	if (body == NULL) {
+		D_FREE(resp.policies);
+		D_ERROR("Failed to allocate response body (get property for check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_MARSHAL;
+	} else {
+		mgmt__check_prop_resp__pack(&resp, body);
+		drpc_resp->body.len = len;
+		drpc_resp->body.data = body;
+	}
+
+	mgmt__check_prop_req__free_unpacked(req, &alloc.alloc);
 }
 
 void
 ds_mgmt_drpc_check_act(Drpc__Call *drpc_req, Drpc__Response *drpc_resp)
 {
+	struct drpc_alloc	 alloc = PROTO_ALLOCATOR_INIT(alloc);
+	Mgmt__CheckActReq	*req = NULL;
+	Mgmt__CheckActResp	 resp = MGMT__CHECK_ACT_RESP__INIT;
+	uint8_t			*body;
+	size_t			 len;
+	int			 rc = 0;
+
+	if (!ds_mgmt_check_enabled()) {
+		D_ERROR("Not in check mode\n");
+		drpc_resp->status = DRPC__STATUS__UNKNOWN_MODULE;
+		return;
+	}
+
+	req = mgmt__check_act_req__unpack(&alloc.alloc, drpc_req->body.len, drpc_req->body.data);
+	if (alloc.oom || req == NULL) {
+		D_ERROR("Failed to unpack req (set action for check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_UNMARSHAL_PAYLOAD;
+		return;
+	}
+
+	D_INFO("Received request to set action for check\n");
+
+	rc = ds_mgmt_check_act(req->seq, req->act, req->for_all);
+	if (rc != 0)
+		D_ERROR("Failed to set action for check: "DF_RC"\n", DP_RC(rc));
+
+	resp.status = rc;
+	len = mgmt__check_act_resp__get_packed_size(&resp);
+	D_ALLOC(body, len);
+	if (body == NULL) {
+		D_ERROR("Failed to allocate response body (set action for check)\n");
+		drpc_resp->status = DRPC__STATUS__FAILED_MARSHAL;
+	} else {
+		mgmt__check_act_resp__pack(&resp, body);
+		drpc_resp->body.len = len;
+		drpc_resp->body.data = body;
+	}
+
+	mgmt__check_act_req__free_unpacked(req, &alloc.alloc);
 }

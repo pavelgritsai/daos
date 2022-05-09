@@ -16,6 +16,7 @@
 #include "event.pb-c.h"
 #include "drpc_internal.h"
 #include "srv_internal.h"
+#include "srv.pb-c.h"
 
 static void
 free_event(Shared__RASEvent *evt)
@@ -348,4 +349,40 @@ ds_notify_swim_rank_dead(d_rank_t rank, uint64_t incarnation)
 			 &rank /* rank */, &incarnation /* inc */, NULL /* jobid */,
 			 NULL /* pool */, NULL /* cont */, NULL /* objid */,
 			 NULL /* ctlop */, &evt, false /* wait_for_resp */);
+}
+
+int
+ds_chk_upcall(void *rpt)
+{
+	Srv__CheckReportReq	 req = SRV__CHECK_REPORT_REQ__INIT;
+	Drpc__Response		*dresp;
+	uint8_t			*reqb = NULL;
+	size_t			 size;
+	int			 rc;
+
+	D_ASSERT(rpt != NULL);
+	req.report = rpt;
+
+	size = srv__check_report_req__get_packed_size(&req);
+	D_ALLOC(reqb, size);
+	if (reqb == NULL)
+		return -DER_NOMEM;
+
+	srv__check_report_req__pack(&req, reqb);
+
+	rc = dss_drpc_call(DRPC_MODULE_SRV, DRPC_METHOD_CHK_REPORT, reqb, size, 0, &dresp);
+	if (rc != 0)
+		goto out;
+
+	if (dresp->status != DRPC__STATUS__SUCCESS) {
+		D_ERROR("received erroneous dRPC response: %d\n", dresp->status);
+		rc = -DER_IO;
+	}
+
+	drpc_response_free(dresp);
+
+out:
+	D_FREE(reqb);
+
+	return rc;
 }

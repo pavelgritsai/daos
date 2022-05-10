@@ -1,16 +1,16 @@
 hosts:
   servers: !mux
-    6_server:
-      test_servers:
-        - server-A
-        - server-B
-        - server-C
-    8_server:
-      test_servers:
-        - server-A
-        - server-B
-        - server-C
-        - server-D
+    # 6_server:
+    #   test_servers:
+    #     - server-A
+    #     - server-B
+    #     - server-C
+    # 8_server:
+    #   test_servers:
+    #     - server-A
+    #     - server-B
+    #     - server-C
+    #     - server-D
     12_server:
       test_servers:
         - server-A

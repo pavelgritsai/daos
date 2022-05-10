@@ -5,7 +5,7 @@
   SPDX-License-Identifier: BSD-2-Clause-Patent
 '''
 from ec_utils import ErasureCodeFio, check_aggregation_status
-from apricot import skipForTicket
+# from apricot import skipForTicket
 
 class EcodFioRebuild(ErasureCodeFio):
     # pylint: disable=too-many-ancestors
@@ -65,7 +65,7 @@ class EcodFioRebuild(ErasureCodeFio):
             # Read and verify the original data.
             self.fio_cmd.run()
 
-    @skipForTicket("DAOS-8870")
+    # @skipForTicket("DAOS-8870")
     def test_ec_online_rebuild_fio(self):
         """Jira ID: DAOS-7320.
 
@@ -82,13 +82,13 @@ class EcodFioRebuild(ErasureCodeFio):
             Kill one more rank and verify the data after rebuild finish.
 
         :avocado: tags=all,full_regression
-        :avocado: tags=hw,large,ib2
+        :avocado: tags=hw,large
         :avocado: tags=ec,ec_array,fio,ec_online_rebuild
         :avocado: tags=ec_online_rebuild_fio
         """
         self.execution('on-line')
 
-    @skipForTicket("DAOS-8640")
+    # @skipForTicket("DAOS-8640")
     def test_ec_offline_rebuild_fio(self):
         """Jira ID: DAOS-7320.
 
@@ -103,7 +103,7 @@ class EcodFioRebuild(ErasureCodeFio):
             Kill one more rank and verify the data after rebuild finish.
 
         :avocado: tags=all,full_regression
-        :avocado: tags=hw,large,ib2
+        :avocado: tags=hw,large
         :avocado: tags=ec,ec_array,fio,ec_offline_rebuild
         :avocado: tags=ec_offline_rebuild_fio
         """
